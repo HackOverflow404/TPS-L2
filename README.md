@@ -1,4 +1,5 @@
 # Spotify Now Playing Kiosk (Raspberry Pi)
+
 A single-page, kiosk-friendly web app that shows your current Spotify track with gorgeous album art, a blurred backdrop, synced/unsynced lyrics, progress bar, media-key controls, and volume/seeking — designed to run locally on a Raspberry Pi 4.
 ---------------------------------
 ## Features
