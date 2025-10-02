@@ -50,7 +50,9 @@ function scrollChildIntoViewCenter(scroller, child) {
 }
 
 // =================== INIT ===================
-window.addEventListener("load", () => { init().catch(console.error); });
+window.addEventListener("load", () => {
+  init().catch(console.error);
+});
 
 async function init() {
   try {
@@ -122,12 +124,16 @@ function startProgressAnimation() {
   let last = performance.now();
 
   const tick = (now) => {
-    const dt = now - last; last = now;
+    const dt = now - last;
+    last = now;
 
     if (isPlaying && currentDurationMs > 0) {
       currentProgressMs = Math.min(currentDurationMs, currentProgressMs + dt);
       const pct = currentDurationMs ? currentProgressMs / currentDurationMs : 0;
-      progressFill.style.transform = `scaleX(${Math.min(1, Math.max(0.0001, pct))})`;
+      progressFill.style.transform = `scaleX(${Math.min(
+        1,
+        Math.max(0.0001, pct)
+      )})`;
 
       // Update time label at ~4 fps to reduce layout
       if (now - lastTimeLabel > 250) {
@@ -230,10 +236,10 @@ function updateUI(data) {
   currentDurationMs = track.duration_ms || 0;
   lastUpdateTime = Date.now();
 
-  const pct = currentDurationMs ? currentProgressMs / currentDurationMs : 0;
+  const progressPercent = currentDurationMs ? currentProgressMs / currentDurationMs : 0;
   progressFill.style.transform = `scaleX(${Math.min(
     1,
-    Math.max(0.0001, pct)
+    Math.max(0.0001, progressPercent)
   )})`;
   currentTime.textContent = formatTime(currentProgressMs);
   duration.textContent = formatTime(currentDurationMs);
@@ -306,6 +312,7 @@ let lyricEls = [];
 let lyricOffsets = [];
 let lyricsScroller = null;
 let lastLyricPaint = 0;
+let justRenderedLyrics = false;
 
 async function fetchLyrics(trackTitle, artist) {
   lrcLines = [];
@@ -416,33 +423,45 @@ function renderSyncedLyrics(lines) {
   }
   lyricsContent.appendChild(frag);
 
-  // Cache scroller once
-  lyricsScroller = document.querySelector(".lyrics-container");
+  lyricsScroller =
+    getScrollParent(lyricsContent) ||
+    document.querySelector(".lyrics-container");
 
-  // Precompute vertical positions in the next frame (after layout)
   requestAnimationFrame(() => {
     lyricOffsets = lyricEls.map((el) => el.offsetTop);
+    justRenderedLyrics = true; // <— snap on first highlight after layout
   });
+
+  // keep offsets fresh if the box/font changes
+  if (window.ResizeObserver) {
+    const ro = new ResizeObserver(() => {
+      lyricOffsets = lyricEls.map((el) => el.offsetTop);
+    });
+    ro.observe(lyricsContent);
+  }
 }
 
 function updateLyricsHighlight(nowMs) {
   if (!lrcLines.length) return;
 
-  // 12 fps throttle to reduce work on Pi
   const now = performance.now();
-  if (now - lastLyricPaint < 83) return; // ~12fps
+  if (now - lastLyricPaint < 83) return;
   lastLyricPaint = now;
 
-  // Binary search stays
-  let lo = 0, hi = lrcLines.length - 1, idx = -1;
+  let lo = 0,
+    hi = lrcLines.length - 1,
+    idx = -1;
   while (lo <= hi) {
     const mid = (lo + hi) >> 1;
-    if (lrcLines[mid].t <= nowMs) { idx = mid; lo = mid + 1; }
-    else { hi = mid - 1; }
+    if (lrcLines[mid].t <= nowMs) {
+      idx = mid;
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
   }
   if (idx === -1 || idx === currentLyricIdx) return;
 
-  // Toggle only the two lines
   if (currentLyricIdx >= 0 && lyricEls[currentLyricIdx]) {
     lyricEls[currentLyricIdx].classList.remove("active");
   }
@@ -451,12 +470,25 @@ function updateLyricsHighlight(nowMs) {
   if (!activeEl) return;
   activeEl.classList.add("active");
 
-  // Center the active line using precomputed offsets (no rect reads)
-  if (lyricsScroller && lyricOffsets.length === lyricEls.length) {
-    const targetTop = lyricOffsets[idx];
-    const center = targetTop - (lyricsScroller.clientHeight - activeEl.offsetHeight) / 2;
-    // Smooth but cheap: tween scrollTop a little per frame (no CSS smooth)
-    lyricsScroller.scrollTop += Math.round((center - lyricsScroller.scrollTop) * 0.35);
+  // --- center active line robustly using viewport rects ---
+  const sRect = lyricsScroller.getBoundingClientRect();
+  const eRect = activeEl.getBoundingClientRect();
+
+  // where the line currently is from the top of the scroller’s visible area
+  const currentOffset = eRect.top - sRect.top;
+
+  // where we want it: visually centered (change to a fraction for “top anchor”)
+  const desiredOffset = (sRect.height - eRect.height) / 2; // center
+  // e.g., keep near top instead: const desiredOffset = sRect.height * 0.15;
+
+  const delta = currentOffset - desiredOffset;
+
+  const snap = justRenderedLyrics || performance.now() - lastLyricPaint < 120;
+  if (snap) {
+    lyricsScroller.scrollTop += delta; // snap to target on first paint
+    justRenderedLyrics = false;
+  } else {
+    lyricsScroller.scrollTop += Math.round(delta * 0.05); // ease toward target
   }
 }
 
