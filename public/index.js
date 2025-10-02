@@ -1,5 +1,4 @@
 // =================== CONFIG ===================
-let CLIENT_ID, CLIENT_SECRET, REFRESH_TOKEN;
 let rafId = null;
 
 // =================== STATE ===================
@@ -56,11 +55,6 @@ window.addEventListener("load", () => {
 
 async function init() {
   try {
-    const credentials = await fetchCredentials();
-    CLIENT_ID = credentials.CLIENT_ID;
-    CLIENT_SECRET = credentials.CLIENT_SECRET;
-    REFRESH_TOKEN = credentials.REFRESH_TOKEN;
-
     setupEventListeners();
     setupMediaSession();
     await refreshAccessToken();
@@ -78,34 +72,17 @@ async function init() {
 }
 
 // =================== TOKEN ===================
-async function fetchCredentials() {
-  const r = await fetch("/credentials.json");
-  if (!r.ok) throw new Error(`credentials.json ${r.status}`);
-  return r.json();
+async function getAccessTokenFromServer() {
+  const r = await fetch("/api/access_token");
+  const data = await r.json();
+  return data;
 }
 
 async function refreshAccessToken() {
   try {
-    const response = await fetch("https://accounts.spotify.com/api/token", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        Authorization: "Basic " + btoa(`${CLIENT_ID}:${CLIENT_SECRET}`),
-      },
-      body: new URLSearchParams({
-        grant_type: "refresh_token",
-        refresh_token: REFRESH_TOKEN,
-      }),
-    });
-
-    const data = await response.json();
-    if (data.access_token) {
-      accessToken = data.access_token;
-      tokenExpiry = Date.now() + data.expires_in * 1000;
-      console.log("Got new access token");
-    } else {
-      console.error("Failed to refresh token", data);
-    }
+    const tokenData = await getAccessTokenFromServer();
+    accessToken = tokenData.access_token;
+    tokenExpiry = Date.now() + tokenData.expires_in * 1000;
   } catch (err) {
     console.error("Error refreshing token", err);
   }
@@ -488,7 +465,7 @@ function updateLyricsHighlight(nowMs) {
     lyricsScroller.scrollTop += delta; // snap to target on first paint
     justRenderedLyrics = false;
   } else {
-    lyricsScroller.scrollTop += Math.round(delta * 0.05); // ease toward target
+    lyricsScroller.scrollTop += Math.round(delta * 0.35); // ease toward target
   }
 }
 
