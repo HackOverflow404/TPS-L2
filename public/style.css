@@ -23,7 +23,7 @@ body {
   height: 200%;
   background-size: cover;
   background-position: center;
-  filter: blur(100px) brightness(0.8) saturate(5);
+  filter: blur(100px) brightness(0.8) saturate(3);
   transform: scale(1.2);
   z-index: 0;
   transition: all 1s ease-in-out;
