@@ -1,6 +1,3 @@
-// =================== CONFIG ===================
-let rafId = null;
-
 // =================== STATE ===================
 let accessToken = null;
 let tokenExpiry = 0;
@@ -10,6 +7,8 @@ let currentProgressMs = 0;
 let currentDurationMs = 0;
 let pollInterval = null;
 let lastUpdateTime = Date.now();
+let progressTimer = null;
+let lastProgressUpdate = Date.now();
 let trackTransitionTimer = null;
 
 // =================== DOM ===================
@@ -99,32 +98,27 @@ async function ensureAccessToken() {
 // =================== PROGRESS TICKER ===================
 let lastTimeLabel = 0;
 function startProgressAnimation() {
-  if (rafId) cancelAnimationFrame(rafId);
-  let last = performance.now();
+  if (progressTimer) clearInterval(progressTimer);
+  lastProgressUpdate = Date.now();
 
-  const tick = (now) => {
-    const dt = now - last;
-    last = now;
+  progressTimer = setInterval(() => {
+    if (!isPlaying || !currentDurationMs) return;
 
-    if (isPlaying && currentDurationMs > 0) {
-      currentProgressMs = Math.min(currentDurationMs, currentProgressMs + dt);
-      const pct = currentDurationMs ? currentProgressMs / currentDurationMs : 0;
-      progressFill.style.transform = `scaleX(${Math.min(
-        1,
-        Math.max(0.0001, pct)
-      )})`;
+    const now = Date.now();
+    const dt = now - lastProgressUpdate;
+    lastProgressUpdate = now;
 
-      // Update time label at ~4 fps to reduce layout
-      if (now - lastTimeLabel > 250) {
-        currentTime.textContent = formatTime(currentProgressMs);
-        lastTimeLabel = now;
-      }
+    currentProgressMs = Math.min(currentDurationMs, currentProgressMs + dt);
+    const pct = currentDurationMs ? currentProgressMs / currentDurationMs : 0;
 
-      updateLyricsHighlight(currentProgressMs);
-    }
-    rafId = requestAnimationFrame(tick);
-  };
-  rafId = requestAnimationFrame(tick);
+    progressFill.style.transform = `scaleX(${Math.min(
+      1,
+      Math.max(0.0001, pct)
+    )})`;
+
+    currentTime.textContent = formatTime(currentProgressMs);
+    updateLyricsHighlight(currentProgressMs);
+  }, 250); // 4 updates per second
 }
 
 // =================== MEDIA SESSION ===================
@@ -476,7 +470,7 @@ function updateLyricsHighlight(nowMs) {
   if (!lrcLines.length) return;
 
   const now = performance.now();
-  if (now - lastLyricPaint < 83) return;
+  if (now - lastLyricPaint < 200) return; // max 5 fps for highlight
   lastLyricPaint = now;
 
   let lo = 0,
@@ -542,7 +536,10 @@ async function togglePlayPause() {
       return;
     }
     isPlaying = !isPlaying;
-    if (isPlaying) lastUpdateTime = Date.now();
+    if (isPlaying) {
+      lastUpdateTime = Date.now();
+      lastProgressUpdate = Date.now();
+    }
     playIcon.style.display = isPlaying ? "none" : "block";
     pauseIcon.style.display = isPlaying ? "block" : "none";
     setTimeout(updateNowPlaying, 300);
@@ -614,6 +611,7 @@ async function seekToPosition(positionMs) {
     updateLyricsHighlight(currentProgressMs);
 
     lastUpdateTime = Date.now();
+    lastProgressUpdate = Date.now();
   } catch (error) {
     console.error("Seek error:", error);
   }
