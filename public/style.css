@@ -43,6 +43,18 @@ body {
   margin: 0 auto;
 }
 
+.container > * {
+  transition: opacity 220ms ease;
+}
+
+.container.track-fade-out > * {
+  opacity: 0;
+}
+
+.container.track-fade-in > * {
+  opacity: 1;
+}
+
 .album-art-container {
   width: 90%;
   max-width: 450px;

@@ -10,8 +10,10 @@ let currentProgressMs = 0;
 let currentDurationMs = 0;
 let pollInterval = null;
 let lastUpdateTime = Date.now();
+let trackTransitionTimer = null;
 
 // =================== DOM ===================
+const rootContainer = document.querySelector(".container");
 const albumArt = document.getElementById("album-art");
 const trackName = document.getElementById("track-name");
 const artistName = document.getElementById("artist-name");
@@ -188,6 +190,7 @@ const fallbackCover = "fallback.png";
 
 function updateUI(data) {
   if (!data || !data.item) {
+    // === no playback case, keep as-is ===
     trackName.textContent = "Not Playing";
     artistName.textContent = "Start playing on Spotify";
     if (albumArt.src !== fallbackCover) {
@@ -196,16 +199,65 @@ function updateUI(data) {
     }
     deviceName.textContent = "No device";
     lyricsContent.textContent = "Start playing a song to see lyrics";
-    progressFill.style.width = "0%";
+    progressFill.style.transform = "scaleX(0.0001)";
     currentTime.textContent = "0:00";
     duration.textContent = "0:00";
     playIcon.style.display = "block";
     pauseIcon.style.display = "none";
     isPlaying = false;
+    currentTrackId = null;
     return;
   }
 
   const track = data.item;
+  const newTrackId = track.id;
+  const trackChanged = currentTrackId && currentTrackId !== newTrackId;
+
+  currentTrackId = newTrackId;
+
+  // Apply UI either instantly or with a smooth fade
+  smoothApplyTrackData(data, track, trackChanged);
+
+  // Lyrics handling
+  if (trackChanged) {
+    fetchLyrics(track.name, track.artists[0].name);
+  } else {
+    updateLyricsHighlight(currentProgressMs);
+  }
+}
+
+function smoothApplyTrackData(data, track, trackChanged) {
+  // First track or no change? Just apply immediately.
+  if (!trackChanged) {
+    applyTrackData(data, track);
+    return;
+  }
+
+  // Clear any previous timers to avoid overlapping transitions
+  if (trackTransitionTimer) {
+    clearTimeout(trackTransitionTimer);
+    trackTransitionTimer = null;
+  }
+
+  // 1) fade out current song
+  rootContainer.classList.add("track-fade-out");
+
+  trackTransitionTimer = setTimeout(() => {
+    // 2) swap in new track data while faded out
+    applyTrackData(data, track);
+
+    // 3) fade back in
+    rootContainer.classList.remove("track-fade-out");
+    rootContainer.classList.add("track-fade-in");
+
+    setTimeout(() => {
+      rootContainer.classList.remove("track-fade-in");
+      trackTransitionTimer = null;
+    }, 240); // should match CSS transition time
+  }, 180); // brief delay so fade-out is visible
+}
+
+function applyTrackData(data, track) {
   const wasPlaying = isPlaying;
   isPlaying = !!data.is_playing;
 
@@ -213,7 +265,10 @@ function updateUI(data) {
   currentDurationMs = track.duration_ms || 0;
   lastUpdateTime = Date.now();
 
-  const progressPercent = currentDurationMs ? currentProgressMs / currentDurationMs : 0;
+  const progressPercent = currentDurationMs
+    ? currentProgressMs / currentDurationMs
+    : 0;
+
   progressFill.style.transform = `scaleX(${Math.min(
     1,
     Math.max(0.0001, progressPercent)
@@ -232,6 +287,7 @@ function updateUI(data) {
     }
   }
 
+  // Media Session metadata
   if ("mediaSession" in navigator) {
     try {
       navigator.mediaSession.metadata = new MediaMetadata({
@@ -254,33 +310,31 @@ function updateUI(data) {
           playbackRate: 1.0,
         });
       }
-    } catch {}
+    } catch {
+      // ignore metadata errors
+    }
   }
 
+  // Play/pause icon
   playIcon.style.display = isPlaying ? "none" : "block";
   pauseIcon.style.display = isPlaying ? "block" : "none";
 
-  duration.textContent = formatTime(track.duration_ms);
-
+  // Device + volume
   if (data.device) {
     deviceName.textContent = data.device.name;
     if (typeof data.device.volume_percent === "number") {
       volumeSlider.value = data.device.volume_percent;
       volumeValue.textContent = `${data.device.volume_percent}%`;
     }
-  }
-
-  if (currentTrackId !== track.id) {
-    currentTrackId = track.id;
-    fetchLyrics(track.name, track.artists[0].name);
   } else {
-    updateLyricsHighlight(currentProgressMs);
+    deviceName.textContent = "No device";
   }
 
   if (!wasPlaying && isPlaying) {
     lastUpdateTime = Date.now();
   }
 }
+
 
 // =================== LYRICS ===================
 let lrcLines = [];
