@@ -75,8 +75,17 @@ async function init() {
 
 // =================== TOKEN ===================
 async function getAccessTokenFromServer() {
-  const r = await fetch("/api/access_token");
+  const r = await fetch("/api/access_token", { credentials: "include" });
+
+  if (r.status === 401) {
+    showLoginUI();
+    throw new Error("Not logged in");
+  }
+
   const data = await r.json();
+  if (!r.ok) {
+    throw new Error(data?.error || "Token fetch failed");
+  }
   return data;
 }
 
@@ -85,6 +94,8 @@ async function refreshAccessToken() {
     const tokenData = await getAccessTokenFromServer();
     accessToken = tokenData.access_token;
     tokenExpiry = Date.now() + tokenData.expires_in * 1000;
+
+    if (loginEl) loginEl.style.display = "none";
   } catch (err) {
     console.error("Error refreshing token", err);
   }
@@ -184,6 +195,44 @@ async function updateNowPlaying() {
     console.error("Playback update error:", error);
   }
 }
+
+
+// ==================== LOGIN UI ====================
+let loginEl = null;
+
+function showLoginUI() {
+  // Stop polling if we can't auth
+  if (pollInterval) {
+    clearInterval(pollInterval);
+    pollInterval = null;
+  }
+
+  trackName.textContent = "Not connected";
+  artistName.textContent = "Connect your Spotify account to continue";
+  deviceName.textContent = "No device";
+  lyricsContent.textContent = "Connect Spotify to see now playing";
+  progressFill.style.transform = "scaleX(0.0001)";
+  currentTime.textContent = "0:00";
+  duration.textContent = "0:00";
+  playIcon.style.display = "block";
+  pauseIcon.style.display = "none";
+  isPlaying = false;
+  currentTrackId = null;
+
+  if (!loginEl) {
+    loginEl = document.createElement("a");
+    loginEl.href = "/api/login";
+    loginEl.textContent = "Connect Spotify";
+    loginEl.className = "login-btn";
+    document.querySelector(".track-info")?.appendChild(loginEl);
+
+    // Optional: right-click / long press could be “logout”
+    // (or add a visible button if you want)
+  }
+
+  loginEl.style.display = "inline-flex";
+}
+
 
 // =================== UI UPDATE ===================
 const fallbackCover = "fallback.png";
