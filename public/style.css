@@ -52,32 +52,6 @@ body {
   opacity: 1;
 }
 
-/* ==== Login UI ==== */
-.login-btn {
-  margin-top: 0.9rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-
-  padding: 0.7rem 1.1rem;
-  border-radius: 999px;
-  text-decoration: none;
-
-  background: linear-gradient(135deg, #1db954 0%, #1ed760 100%);
-  color: #0b0b0b;
-  font-weight: 700;
-  border: none;
-
-  box-shadow: 0 10px 30px rgba(29, 185, 84, 0.35);
-  transition: transform 0.15s ease, box-shadow 0.2s ease;
-}
-
-.login-btn:hover {
-  transform: scale(1.03);
-  box-shadow: 0 12px 34px rgba(29, 185, 84, 0.45);
-}
-
 .album-art-container {
   width: 90%;
   max-width: 450px;
