@@ -13,9 +13,4 @@ A single-page, kiosk-friendly web app that shows your current Spotify track with
 - Background blur + cover art mirror with a kiosk-ready layout
 - Media Session API: integrates with hardware/media keys
 - Local-only: static site that talks directly to Spotify’s Web API with a refresh token
-
----------------------------------
-
-## ToDo
-
-- Add PKCE-based authentication
+- Connect With Spotify: Securely allows you to connect your Spotify account
