@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Connect Spotify</title>
+    <link rel="stylesheet" href="style.css" />
+    <style>
+      /* Override only what we need for centering */
+      body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .connect-card {
+        width: min(520px, calc(100vw - 32px));
+        padding: 28px;
+        border-radius: 18px;
+        backdrop-filter: blur(18px);
+        background: rgba(0, 0, 0, 0.35);
+        border: 1px solid rgba(255, 255, 255, 0.10);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+        text-align: center;
+        position: relative;
+        z-index: 1; /* above background overlay */
+      }
+
+      .connect-title {
+        font-size: 28px;
+        font-weight: 700;
+        margin: 0 0 10px;
+      }
+
+      .connect-subtitle {
+        opacity: 0.8;
+        margin: 0 0 22px;
+        line-height: 1.4;
+      }
+
+      .connect-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        width: 100%;
+        padding: 14px 16px;
+        border-radius: 14px;
+        border: none;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 650;
+        background: #1db954;
+        color: white;
+      }
+
+      .connect-btn:hover {
+        filter: brightness(1.03);
+      }
+      .connect-btn:active {
+        transform: translateY(1px);
+      }
+
+      .connect-links {
+        margin-top: 16px;
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+
+      .connect-links a {
+        opacity: 0.75;
+        text-decoration: none;
+        font-size: 13px;
+        color: inherit;
+      }
+
+      .connect-links a:hover {
+        opacity: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="background-overlay"></div>
+
+    <div class="connect-card">
+      <h1 class="connect-title">Connect with Spotify</h1>
+      <p class="connect-subtitle">
+        Sign in to display your Now Playing dashboard.
+      </p>
+
+      <button class="connect-btn" id="connect-btn">Connect with Spotify</button>
+
+      <div class="connect-links">
+        <a href="/" id="go-dashboard">Go to dashboard</a>
+        <a href="#" id="logout-link">Disconnect</a>
+      </div>
+    </div>
+
+    <script type="module">
+      document.getElementById("connect-btn").addEventListener("click", () => {
+        window.location.href = "/api/login";
+      });
+
+      document.getElementById("logout-link").addEventListener("click", async (e) => {
+        e.preventDefault();
+        try {
+          await fetch("/api/logout", { method: "POST", credentials: "include" });
+        } catch {}
+      });
+    </script>
+  </body>
+</html>

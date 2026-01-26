@@ -60,6 +60,8 @@ async function init() {
     setupEventListeners();
     setupMediaSession();
     await refreshAccessToken();
+    if (!accessToken) return; // redirected to connect
+
     await updateNowPlaying();
 
     if (pollInterval) clearInterval(pollInterval);
@@ -68,26 +70,34 @@ async function init() {
     startProgressAnimation();
   } catch (e) {
     console.error("Init failed:", e);
-    trackName.textContent = "Init failed";
-    artistName.textContent = e?.message || "See console";
+    // If something goes wrong that isn't auth, show a gentle message
+    trackName.textContent = "Something went wrong";
+    artistName.textContent = "Check console for details";
   }
 }
 
 // =================== TOKEN ===================
 async function getAccessTokenFromServer() {
-  const r = await fetch("/api/access_token");
-  const data = await r.json();
-  return data;
+  const r = await fetch("/api/access_token", { credentials: "include" });
+
+  if (r.status === 401) {
+    window.location.href = "/connect.html";
+    return null;
+  }
+
+  if (!r.ok) {
+    const text = await r.text().catch(() => "");
+    throw new Error(`Token endpoint failed (${r.status}) ${text}`);
+  }
+
+  return await r.json();
 }
 
 async function refreshAccessToken() {
-  try {
-    const tokenData = await getAccessTokenFromServer();
-    accessToken = tokenData.access_token;
-    tokenExpiry = Date.now() + tokenData.expires_in * 1000;
-  } catch (err) {
-    console.error("Error refreshing token", err);
-  }
+  const tokenData = await getAccessTokenFromServer();
+  if (!tokenData) return; // redirected to connect
+  accessToken = tokenData.access_token;
+  tokenExpiry = Date.now() + tokenData.expires_in * 1000;
 }
 
 async function ensureAccessToken() {
