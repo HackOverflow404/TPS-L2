@@ -13,17 +13,11 @@ function parseCookies(cookieHeader) {
   return out;
 }
 
-function isHttps(req) {
-  const xfProto = req.headers["x-forwarded-proto"];
-  if (typeof xfProto === "string") return xfProto.includes("https");
-  return req.connection?.encrypted === true;
-}
-
 function serializeCookie(name, value, options = {}) {
   const opts = {
     path: "/",
     httpOnly: true,
-    secure: isHttps(req),
+    secure: true,
     sameSite: "Lax",
     ...options,
   };
