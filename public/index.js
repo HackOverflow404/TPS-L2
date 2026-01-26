@@ -11,6 +11,7 @@ let currentDurationMs = 0;
 let pollInterval = null;
 let lastUpdateTime = Date.now();
 let trackTransitionTimer = null;
+let lyricsTrackId = null;
 
 // =================== DOM ===================
 const rootContainer = document.querySelector(".container");
@@ -200,7 +201,6 @@ const fallbackCover = "fallback.png";
 
 function updateUI(data) {
   if (!data || !data.item) {
-    // === no playback case, keep as-is ===
     trackName.textContent = "Not Playing";
     artistName.textContent = "Start playing on Spotify";
     if (albumArt.src !== fallbackCover) {
@@ -215,21 +215,23 @@ function updateUI(data) {
     playIcon.style.display = "block";
     pauseIcon.style.display = "none";
     isPlaying = false;
+
     currentTrackId = null;
+    lyricsTrackId = null;
     return;
   }
 
   const track = data.item;
   const newTrackId = track.id;
-  const trackChanged = currentTrackId && currentTrackId !== newTrackId;
+
+  const trackChanged = currentTrackId !== newTrackId;
 
   currentTrackId = newTrackId;
 
-  // Apply UI either instantly or with a smooth fade
   smoothApplyTrackData(data, track, trackChanged);
 
-  // Lyrics handling
-  if (trackChanged) {
+  if (lyricsTrackId !== newTrackId) {
+    lyricsTrackId = newTrackId;
     fetchLyrics(track.name, track.artists[0].name);
   } else {
     updateLyricsHighlight(currentProgressMs);
