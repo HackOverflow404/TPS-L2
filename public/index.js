@@ -393,15 +393,24 @@ async function fetchLyrics(trackTitle, artist) {
         const sampleText = parsed.map(l => l.text).join(" ");
         if (hasNonLatinChars(sampleText)) {
           const script = detectScript(sampleText);
+          console.log("[romanize] non-latin detected, script:", script);
           if (script) {
             lyricsContent.textContent = "Romanizing lyrics...";
-            const romanize = await getRomanizer(script);
-            if (romanize) {
-              parsed = await Promise.all(
-                parsed.map(async l => ({ ...l, text: await romanize(l.text) }))
-              );
+            try {
+              const romanize = await getRomanizer(script);
+              console.log("[romanize] romanizer loaded:", !!romanize);
+              if (romanize) {
+                parsed = await Promise.all(
+                  parsed.map(async l => ({ ...l, text: await romanize(l.text) }))
+                );
+                console.log("[romanize] done, sample:", parsed[0]?.text);
+              }
+            } catch (re) {
+              console.error("[romanize] failed:", re);
             }
           }
+        } else {
+          console.log("[romanize] no non-latin chars detected in lyrics");
         }
         lrcLines = parsed;
         renderSyncedLyrics(lrcLines);
