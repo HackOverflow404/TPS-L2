@@ -388,8 +388,22 @@ async function fetchLyrics(trackTitle, artist) {
 
     const lrcText = data?.syncedLyrics || data?.lrc || null;
     if (lrcText) {
-      lrcLines = parseLRC(lrcText);
-      if (lrcLines.length) {
+      let parsed = parseLRC(lrcText);
+      if (parsed.length) {
+        const sampleText = parsed.map(l => l.text).join(" ");
+        if (hasNonLatinChars(sampleText)) {
+          const script = detectScript(sampleText);
+          if (script) {
+            lyricsContent.textContent = "Romanizing lyrics...";
+            const romanize = await getRomanizer(script);
+            if (romanize) {
+              parsed = await Promise.all(
+                parsed.map(async l => ({ ...l, text: await romanize(l.text) }))
+              );
+            }
+          }
+        }
+        lrcLines = parsed;
         renderSyncedLyrics(lrcLines);
         updateLyricsHighlight(currentProgressMs || 0);
         return;
@@ -724,3 +738,47 @@ function setSiteVolumePercent(pct) {
 }
 
 document.addEventListener("contextmenu", (e) => e.preventDefault());
+
+// =================== ROMANIZATION ===================
+const _romanizers = {};
+
+function hasNonLatinChars(text) {
+  return /[^\u0000-\u024F\u1E00-\u1EFF\s\d\p{P}]/u.test(text);
+}
+
+function detectScript(text) {
+  if (/[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]/.test(text)) return "korean";
+  if (/[\u3040-\u30FF]/.test(text)) return "japanese";
+  if (/[\u4E00-\u9FFF\u3400-\u4DBF]/.test(text)) return "chinese";
+  return null;
+}
+
+async function getRomanizer(script) {
+  if (_romanizers[script]) return _romanizers[script];
+
+  try {
+    if (script === "korean") {
+      const { romanize } = await import("https://esm.sh/es-hangul");
+      _romanizers[script] = (text) => romanize(text);
+
+    } else if (script === "japanese") {
+      const [{ default: Kuroshiro }, { default: KuromojiAnalyzer }] = await Promise.all([
+        import("https://esm.sh/kuroshiro"),
+        import("https://esm.sh/kuroshiro-analyzer-kuromoji"),
+      ]);
+      const kuroshiro = new Kuroshiro();
+      await kuroshiro.init(new KuromojiAnalyzer());
+      _romanizers[script] = (text) =>
+        kuroshiro.convert(text, { to: "romaji", mode: "spaced" });
+
+    } else if (script === "chinese") {
+      const { default: pinyin } = await import("https://esm.sh/pinyin");
+      _romanizers[script] = (text) =>
+        pinyin(text, { style: pinyin.STYLE_NORMAL }).flat().join(" ");
+    }
+  } catch (e) {
+    console.warn(`Failed to load romanizer for ${script}:`, e);
+  }
+
+  return _romanizers[script] || null;
+}
