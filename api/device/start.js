@@ -7,13 +7,12 @@ import {
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "method_not_allowed" });
   try {
-    const device_code = newDeviceCode();
+    const device_code = newDeviceCode(LINK_SECONDS);
     // Retry the (unlikely) case of a short code that is already in use.
     for (let attempt = 0; attempt < 5; attempt++) {
       const user_code = newUserCode();
       const taken = await redis("SET", `link:code:${user_code}`, device_code, "EX", LINK_SECONDS, "NX");
       if (taken !== "OK") continue;
-      await redis("SET", `link:device:${device_code}`, "pending", "EX", LINK_SECONDS);
       return res.status(200).json({
         device_code,
         user_code,

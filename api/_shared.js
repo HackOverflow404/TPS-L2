@@ -55,8 +55,28 @@ export function newUserCode() {
   return `${code.slice(0, 4)}-${code.slice(4)}`;
 }
 
-export function newDeviceCode() {
-  return crypto.randomBytes(32).toString("base64url");
+// A device code is "<expiry>.<random>.<signature>", so a poll can reject a made-up or
+// expired code without a Redis command: only codes from /api/device/start pass, and
+// those are rate-limited by the firewall. The key is derived from the client secret.
+function sign(payload) {
+  const key = crypto.createHmac("sha256", process.env.SPOTIFY_CLIENT_SECRET || "")
+    .update("tps-l2 device code").digest();
+  return crypto.createHmac("sha256", key).update(payload).digest("base64url");
+}
+
+export function newDeviceCode(lifetimeSeconds) {
+  const payload = `${Math.floor(Date.now() / 1000) + lifetimeSeconds}.${crypto.randomBytes(24).toString("base64url")}`;
+  return `${payload}.${sign(payload)}`;
+}
+
+/** "valid", "expired" or "invalid", checked without Redis. */
+export function checkDeviceCode(code) {
+  const match = /^(\d{10})\.([A-Za-z0-9_-]{32})\.([A-Za-z0-9_-]{43})$/.exec(String(code || ""));
+  if (!match) return "invalid";
+  const expected = Buffer.from(sign(`${match[1]}.${match[2]}`));
+  const given = Buffer.from(match[3]);
+  if (given.length !== expected.length || !crypto.timingSafeEqual(given, expected)) return "invalid";
+  return Number(match[1]) > Date.now() / 1000 ? "valid" : "expired";
 }
 
 /** "bxq7m4tk", "BXQ7 M4TK" -> "BXQ7-M4TK"; anything else -> null. */
