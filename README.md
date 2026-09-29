@@ -1,4 +1,6 @@
-# Spotify Now Playing Kiosk (Raspberry Pi)
+# TPS-L2: Spotify Now Playing Kiosk (Raspberry Pi)
+
+Named after the Sony TPS-L2, the original 1979 Walkman.
 
 A single-page, kiosk-friendly web app that shows your current Spotify track with gorgeous album art, a blurred backdrop, synced/unsynced lyrics, progress bar, media-key controls, and volume/seeking — designed to run locally on a Raspberry Pi 4.
 
