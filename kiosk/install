@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Install and start the kiosk on this machine (the Pi driving the panel).
+set -euo pipefail
+cd -- "$(dirname -- "$0")"
+command -v cog >/dev/null || sudo apt-get install -y --no-install-recommends cog
+unit=/etc/systemd/system/tps-l2-kiosk.service
+[[ ! -f "$unit" ]] || sudo cp -a "$unit" "$unit.$(date +%Y%m%d-%H%M%S).bak"
+sudo install -m 644 tps-l2-kiosk.service "$unit"
+sudo systemctl daemon-reload
+sudo systemctl enable --now tps-l2-kiosk.service

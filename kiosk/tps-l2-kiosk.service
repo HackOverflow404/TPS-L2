@@ -1,0 +1,30 @@
+[Unit]
+Description=TPS-L2 now-playing kiosk on the LVDS panel
+Wants=network-online.target
+After=network-online.target systemd-user-sessions.service getty@tty1.service
+# The kiosk owns the first console; its login prompt returns when the kiosk stops.
+Conflicts=getty@tty1.service
+
+[Service]
+User=user
+# A logind session on tty1, so Cog may take control of the display (DRM master).
+PAMName=login
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+StandardInput=tty
+StandardOutput=journal
+StandardError=journal
+UtmpIdentifier=tty1
+# The panel's controller board doesn't offer the panel's native 1366x768; 1280x720
+# has the same shape, so the board scales it without distortion.
+Environment=COG_PLATFORM_DRM_VIDEO_MODE=1280x720
+ExecStartPre=/usr/bin/mkdir -p /home/user/.local/share/tps-l2
+ExecStart=/usr/bin/cog --platform=drm --platform-params=renderer=gles \
+    --cookie-store=always --cookie-jar=sqlite:/home/user/.local/share/tps-l2/cookies.sqlite \
+    https://tps-l2.vercel.app/
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

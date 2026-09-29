@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Stop and remove the kiosk; tty1's login prompt comes back. Leaves cog and the
+# saved Spotify login (~/.local/share/tps-l2) in place.
+set -euo pipefail
+sudo systemctl disable --now tps-l2-kiosk.service
+sudo rm -f /etc/systemd/system/tps-l2-kiosk.service
+sudo systemctl daemon-reload
+sudo systemctl start getty@tty1.service

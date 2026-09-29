@@ -16,3 +16,12 @@ A single-page, kiosk-friendly web app that shows your current Spotify track with
 - Media Session API: integrates with hardware/media keys
 - Local-only: static site that talks directly to Spotify’s Web API with a refresh token
 - Connect With Spotify: Securely allows you to connect your Spotify account
+
+## Kiosk on a Raspberry Pi
+
+`kiosk/` runs the dashboard full screen on a Pi's display with no desktop: Cog (a WPE
+WebKit browser) draws straight to the screen, which is much lighter than Chromium on X11.
+On the Pi, run `kiosk/install` (installs `cog` and the `tps-l2-kiosk` system service,
+which takes over the first console); `kiosk/uninstall` removes the service.
+The service sets the display mode with `COG_PLATFORM_DRM_VIDEO_MODE` (1280x720 for the
+LVDS panel's controller board) and saves the login in `~/.local/share/tps-l2/`.
