@@ -19,8 +19,10 @@ UtmpIdentifier=tty1
 # The panel's controller board doesn't offer the panel's native 1366x768; 1280x720
 # has the same shape, so the board scales it without distortion.
 Environment=COG_PLATFORM_DRM_VIDEO_MODE=1280x720
+# The panel is mounted in portrait: rotation counts 90-degree steps counter-clockwise,
+# so 3 turns the picture 90 degrees clockwise (xrandr's "--rotate right").
 ExecStartPre=/usr/bin/mkdir -p /home/user/.local/share/tps-l2
-ExecStart=/usr/bin/cog --platform=drm --platform-params=renderer=gles \
+ExecStart=/usr/bin/cog --platform=drm --platform-params=renderer=gles,rotation=3 \
     --cookie-store=always --cookie-jar=sqlite:/home/user/.local/share/tps-l2/cookies.sqlite \
     https://tps-l2.vercel.app/
 Restart=always
