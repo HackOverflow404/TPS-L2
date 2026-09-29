@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Link a display · TPS-L2</title>
+    <link rel="stylesheet" href="style.css" />
+    <style>
+      body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .connect-card {
+        width: min(460px, calc(100vw - 32px));
+        padding: 28px;
+        border-radius: 18px;
+        backdrop-filter: blur(18px);
+        background: rgba(0, 0, 0, 0.35);
+        border: 1px solid rgba(255, 255, 255, 0.10);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+        text-align: center;
+        position: relative;
+        z-index: 1;
+      }
+
+      .connect-title {
+        font-size: 26px;
+        font-weight: 700;
+        margin: 0 0 10px;
+      }
+
+      .connect-subtitle {
+        opacity: 0.8;
+        margin: 0 0 20px;
+        line-height: 1.4;
+      }
+
+      .link-code {
+        font-family: ui-monospace, "SF Mono", Menlo, monospace;
+        font-size: 34px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        margin: 0 0 20px;
+      }
+
+      .link-input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 14px 16px;
+        margin-bottom: 14px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        background: rgba(255, 255, 255, 0.06);
+        color: inherit;
+        font-family: ui-monospace, "SF Mono", Menlo, monospace;
+        font-size: 22px;
+        text-align: center;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .connect-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        padding: 14px 16px;
+        border-radius: 14px;
+        border: none;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 650;
+        background: #1db954;
+        color: white;
+      }
+
+      .connect-btn:hover {
+        filter: brightness(1.03);
+      }
+
+      .link-error {
+        color: #ff8a80;
+        margin: 0 0 16px;
+      }
+
+      [hidden] {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="background-overlay"></div>
+
+    <div class="connect-card">
+      <!-- Arrived from the QR code: confirm it's the code on your screen. -->
+      <section id="confirm" hidden>
+        <h1 class="connect-title">Link a TPS-L2 display</h1>
+        <p class="connect-subtitle">Only continue if this code is showing on your display.</p>
+        <p class="link-code" id="confirm-code"></p>
+        <button class="connect-btn" id="confirm-btn">Continue with Spotify</button>
+      </section>
+
+      <!-- No code, or it expired: type the code shown on the display. -->
+      <section id="enter" hidden>
+        <h1 class="connect-title">Link a TPS-L2 display</h1>
+        <p class="link-error" id="enter-error" hidden>That code has expired. The display shows a new one.</p>
+        <p class="connect-subtitle">Enter the code shown on your display.</p>
+        <form id="enter-form">
+          <input class="link-input" id="enter-code" autocomplete="off" autocapitalize="characters"
+                 spellcheck="false" maxlength="9" placeholder="XXXX-XXXX" />
+          <button class="connect-btn" type="submit">Continue with Spotify</button>
+        </form>
+      </section>
+
+      <section id="done" hidden>
+        <h1 class="connect-title">Display linked</h1>
+        <p class="connect-subtitle">Your display will show what's playing in a few seconds. You can close this page.</p>
+      </section>
+    </div>
+
+    <script type="module">
+      const params = new URLSearchParams(location.search);
+      const show = (id) => (document.getElementById(id).hidden = false);
+      const login = (code) => (location.href = "/api/login?link=" + encodeURIComponent(code));
+
+      if (params.get("done")) {
+        show("done");
+      } else if (params.get("code") && !params.get("error")) {
+        document.getElementById("confirm-code").textContent = params.get("code");
+        document.getElementById("confirm-btn").addEventListener("click", () => login(params.get("code")));
+        show("confirm");
+      } else {
+        if (params.get("error")) show("enter-error");
+        document.getElementById("enter-form").addEventListener("submit", (e) => {
+          e.preventDefault();
+          const code = document.getElementById("enter-code").value.trim();
+          if (code) login(code);
+        });
+        show("enter");
+      }
+    </script>
+  </body>
+</html>

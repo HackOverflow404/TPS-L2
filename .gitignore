@@ -1,2 +1,4 @@
 # Creds
 credentials.json
+.vercel
+.env*

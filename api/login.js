@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { normalizeUserCode, redis } from "./_shared.js";
 
 function serializeCookie(name, value, options = {}) {
   const opts = {
@@ -19,7 +20,21 @@ function serializeCookie(name, value, options = {}) {
   return cookie;
 }
 
-export default function handler(req, res) {
+export default async function handler(req, res) {
+  // ?link=CODE: this login links a display (see /api/device/*) instead of this browser.
+  let link = "";
+  if (req.query.link) {
+    link = normalizeUserCode(req.query.link);
+    try {
+      if (!link || !(await redis("GET", `link:code:${link}`))) {
+        return res.redirect("/link.html?error=expired");
+      }
+    } catch (e) {
+      console.error("login link check:", e.message);
+      return res.status(500).send("Server error");
+    }
+  }
+
   const scopes = [
     "user-read-playback-state",
     "user-modify-playback-state",
@@ -39,12 +54,13 @@ export default function handler(req, res) {
     show_dialog: "true",
   });
 
-  res.setHeader(
-    "Set-Cookie",
+  res.setHeader("Set-Cookie", [
     serializeCookie("spotify_oauth_state", state, {
       maxAge: 10 * 60, // 10 minutes
-    })
-  );
+    }),
+    // Set for a display link, cleared otherwise so a stale one can't redirect this login.
+    serializeCookie("spotify_link_code", link, { maxAge: link ? 10 * 60 : 0 }),
+  ]);
 
   res.redirect("https://accounts.spotify.com/authorize?" + params.toString());
 }

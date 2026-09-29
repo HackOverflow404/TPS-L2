@@ -1,3 +1,5 @@
+import { HANDOFF_SECONDS, redis } from "./_shared.js";
+
 function parseCookies(cookieHeader) {
   const out = {};
   if (!cookieHeader) return out;
@@ -77,6 +79,19 @@ export default async function handler(req, res) {
       return res
         .status(400)
         .send("No refresh_token returned. Try reconnecting (show dialog) or revoke access and try again.");
+    }
+
+    // A display link: hand the login to the display that showed the code, not this browser.
+    if (cookies.spotify_link_code) {
+      const userCode = cookies.spotify_link_code;
+      const deviceCode = await redis("GETDEL", `link:code:${userCode}`);
+      res.setHeader("Set-Cookie", [
+        serializeCookie("spotify_link_code", "", { maxAge: 0 }),
+        serializeCookie("spotify_oauth_state", "", { maxAge: 0 }),
+      ]);
+      if (!deviceCode) return res.redirect("/link.html?error=expired");
+      await redis("SET", `link:token:${deviceCode}`, data.refresh_token, "EX", HANDOFF_SECONDS);
+      return res.redirect("/link.html?done=1");
     }
 
     // Store refresh token in Secure HttpOnly cookie (per-user)
