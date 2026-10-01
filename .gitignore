@@ -2,3 +2,8 @@
 credentials.json
 .vercel
 .env*
+
+# Claude agent skills installed by the Vercel/Upstash CLI
+.agents/
+.claude/
+skills-lock.json
