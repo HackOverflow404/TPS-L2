@@ -356,6 +356,7 @@ let lyricOffsets = [];
 let lyricsScroller = null;
 let lastLyricPaint = 0;
 let justRenderedLyrics = false;
+let lyricsResizeObserver = null;
 
 async function fetchLyrics(trackTitle, artist) {
   lrcLines = [];
@@ -498,12 +499,14 @@ function renderSyncedLyrics(lines) {
     justRenderedLyrics = true; // <— snap on first highlight after layout
   });
 
-  // keep offsets fresh if the box/font changes
-  if (window.ResizeObserver) {
-    const ro = new ResizeObserver(() => {
+  // keep offsets fresh if the box/font changes. One observer for the page's lifetime: a new one
+  // per song was never disconnected and kept every old song's lyric elements alive (the kiosk
+  // grew to ~700 MB over three weeks).
+  if (window.ResizeObserver && !lyricsResizeObserver) {
+    lyricsResizeObserver = new ResizeObserver(() => {
       lyricOffsets = lyricEls.map((el) => el.offsetTop);
     });
-    ro.observe(lyricsContent);
+    lyricsResizeObserver.observe(lyricsContent);
   }
 }
 
